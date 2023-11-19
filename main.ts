@@ -38,7 +38,7 @@ export default class MyPlugin extends Plugin {
 					this.sendMail(this.app.workspace.activeEditor?.editor);
 				}
 			}, 1000 * 60 * 60)
-		)
+		);
 
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 	}
@@ -78,11 +78,11 @@ export default class MyPlugin extends Plugin {
 
 		mailTransport.sendMail(sendMailOption, (err, info) => {
 			if (err) {
-				new Notice(err.message)
+				new Notice(err.message);
 			} else {
-				new Notice(info.response)
+				new Notice(info.response);
 			}
-		})
+		});
 	}
 
 	async loadSettings() {
