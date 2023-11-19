@@ -1,13 +1,23 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
-
-// Remember to rename these classes and interfaces!
+import { App, Editor, Notice, Plugin, PluginSettingTab, Setting, moment } from 'obsidian';
+import { createTransport  } from 'nodemailer';
+import { Options } from 'nodemailer/lib/mailer';
 
 interface MyPluginSettings {
-	mySetting: string;
+	host: string;
+	port: number;
+	password: string;
+	from: string;
+	to: string;
+	bcc: string;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+	host: 'smtp.exmail.qq.com',
+	port: 465,
+	password: 'WSnCr8GS8cRdbrZX',
+	from: 'luoguang@dameng.com',
+	to: 'luoguang@dameng.com',
+	bcc: 'luoguang@dameng.com'
 }
 
 export default class MyPlugin extends Plugin {
@@ -15,71 +25,64 @@ export default class MyPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
-
-		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
+			id: 'send-mail',
+			name: 'Send Mail',
+			editorCallback: (editor: Editor) => this.sendMail(editor)
 		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
+		this.registerInterval(
+			window.setInterval(() => {
+				const hour = moment().hour();
+				if (hour === 14) {
+					this.sendMail(this.app.workspace.activeEditor?.editor);
 				}
-			}
-		});
+			}, 1000 * 60 * 60)
+		)
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 	}
 
 	onunload() {
 
+	}
+
+	sendMail(editor: Editor | undefined) {
+		if (!editor) return;
+		const editorContent = editor.getValue().split('## Work')[1].trim();
+		if (editorContent.length === 0) {
+			new Notice('send error! content is empty!');
+			return;
+		}
+
+		const to = this.settings.to.split(',').map(item => item.trim());
+		const bcc = this.settings.bcc.split(',').map(item => item.trim());
+
+		const mailTransport = createTransport({
+			host: this.settings.host,
+			secure: true,
+			port: this.settings.port,
+			auth: {
+				user: this.settings.from,
+				pass: this.settings.password
+			}
+		});
+
+		const sendMailOption: Options = {
+			from: this.settings.from,
+			to,
+			bcc,
+			subject: `工作日报 - 罗广 - ${moment().format('YYYYMMDD')}`,
+			text: editorContent
+		};
+
+		mailTransport.sendMail(sendMailOption, (err, info) => {
+			if (err) {
+				new Notice(err.message)
+			} else {
+				new Notice(info.response)
+			}
+		})
 	}
 
 	async loadSettings() {
@@ -88,22 +91,6 @@ export default class MyPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
 	}
 }
 
@@ -116,18 +103,67 @@ class SampleSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
-		const {containerEl} = this;
+		const { containerEl } = this;
 
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
+			.setName('Host: ')
 			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
+				.setPlaceholder('Enter your host')
+				.setValue(this.plugin.settings.host)
 				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
+					this.plugin.settings.host = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Port: ')
+			.addText(text => text
+				.setPlaceholder('Enter your port')
+				.setValue(this.plugin.settings.port.toString())
+				.onChange(async (value) => {
+					this.plugin.settings.port = parseInt(value);
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Password: ')
+			.addText(text => text
+				.setPlaceholder('Enter your password')
+				.setValue(this.plugin.settings.password)
+				.onChange(async (value) => {
+					this.plugin.settings.password = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('From: ')
+			.addText(text => text
+				.setPlaceholder('Enter your from')
+				.setValue(this.plugin.settings.from)
+				.onChange(async (value) => {
+					this.plugin.settings.from = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('To: ')
+			.addText(text => text
+				.setPlaceholder('Enter your to')
+				.setValue(this.plugin.settings.to)
+				.onChange(async (value) => {
+					this.plugin.settings.to = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Bcc: ')
+			.addText(text => text
+				.setPlaceholder('Enter your bcc')
+				.setValue(this.plugin.settings.bcc)
+				.onChange(async (value) => {
+					this.plugin.settings.bcc = value;
 					await this.plugin.saveSettings();
 				}));
 	}
