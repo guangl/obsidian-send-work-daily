@@ -1,4 +1,4 @@
-import { App, Editor, Notice, Plugin, PluginSettingTab, Setting, moment } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, Setting, moment } from 'obsidian';
 import { createTransport  } from 'nodemailer';
 import { Options } from 'nodemailer/lib/mailer';
 
@@ -12,12 +12,12 @@ interface MyPluginSettings {
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	host: 'smtp.exmail.qq.com',
-	port: 465,
-	password: 'WSnCr8GS8cRdbrZX',
-	from: 'luoguang@dameng.com',
-	to: 'luoguang@dameng.com',
-	bcc: 'luoguang@dameng.com'
+	host: '',
+	port: 0,
+	password: '',
+	from: '',
+	to: '',
+	bcc: ''
 }
 
 export default class MyPlugin extends Plugin {
@@ -28,14 +28,14 @@ export default class MyPlugin extends Plugin {
 		this.addCommand({
 			id: 'send-mail',
 			name: 'Send Mail',
-			editorCallback: (editor: Editor) => this.sendMail(editor)
+			editorCallback: () => this.sendMail()
 		});
 
 		this.registerInterval(
 			window.setInterval(() => {
 				const hour = moment().hour();
 				if (hour === 14) {
-					this.sendMail(this.app.workspace.activeEditor?.editor);
+					this.sendMail();
 				}
 			}, 1000 * 60 * 60)
 		);
@@ -47,16 +47,20 @@ export default class MyPlugin extends Plugin {
 
 	}
 
-	sendMail(editor: Editor | undefined) {
-		if (!editor) return;
-		const editorContent = editor.getValue().split('## Work')[1].trim();
-		if (editorContent.length === 0) {
+	async sendMail() {
+		const { vault } = this.app;
+		const to = this.settings.to.split(',').map(item => item.trim());
+		const bcc = this.settings.bcc.split(',').map(item => item.trim());
+
+		const todayDaily = vault.getMarkdownFiles().find(item => item.basename === `${moment().format('YYYY-MM-DD')}`);
+		if (todayDaily === undefined) { new Notice('no daily file!'); return; }
+		const todayDailyContent = await vault.cachedRead(todayDaily);
+		const workContent = todayDailyContent.split('## Work')[1].trim();
+
+		if (workContent.length === 0) {
 			new Notice('send error! content is empty!');
 			return;
 		}
-
-		const to = this.settings.to.split(',').map(item => item.trim());
-		const bcc = this.settings.bcc.split(',').map(item => item.trim());
 
 		const mailTransport = createTransport({
 			host: this.settings.host,
@@ -73,7 +77,7 @@ export default class MyPlugin extends Plugin {
 			to,
 			bcc,
 			subject: `工作日报 - 罗广 - ${moment().format('YYYYMMDD')}`,
-			text: editorContent
+			text: workContent
 		};
 
 		mailTransport.sendMail(sendMailOption, (err, info) => {
