@@ -2,26 +2,32 @@ import { App, Notice, Plugin, PluginSettingTab, Setting, moment } from 'obsidian
 import { createTransport  } from 'nodemailer';
 import { Options } from 'nodemailer/lib/mailer';
 
-interface MyPluginSettings {
+interface SendEmailPluginSettings {
 	host: string;
 	port: number;
+	ssl: boolean;
 	password: string;
 	from: string;
 	to: string;
+	cc: string;
 	bcc: string;
+	subjectFormat: string;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
+const DEFAULT_SETTINGS: SendEmailPluginSettings = {
 	host: '',
 	port: 0,
+	ssl: true,
 	password: '',
 	from: '',
 	to: '',
-	bcc: ''
+	cc: '',
+	bcc: '',
+	subjectFormat: ''
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class SendEmailPlugin extends Plugin {
+	settings: SendEmailPluginSettings;
 
 	async onload() {
 		await this.loadSettings();
@@ -40,7 +46,7 @@ export default class MyPlugin extends Plugin {
 			}, 1000 * 60 * 60)
 		);
 
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new SendEmailSettingTab(this.app, this));
 	}
 
 	onunload() {
@@ -50,6 +56,7 @@ export default class MyPlugin extends Plugin {
 	async sendMail() {
 		const { vault } = this.app;
 		const to = this.settings.to.split(',').map(item => item.trim());
+		const cc = this.settings.cc.split(',').map(item => item.trim());
 		const bcc = this.settings.bcc.split(',').map(item => item.trim());
 
 		const todayDaily = vault.getMarkdownFiles().find(item => item.basename === `${moment().format('YYYY-MM-DD')}`);
@@ -64,7 +71,7 @@ export default class MyPlugin extends Plugin {
 
 		const mailTransport = createTransport({
 			host: this.settings.host,
-			secure: true,
+			secure: this.settings.ssl,
 			port: this.settings.port,
 			auth: {
 				user: this.settings.from,
@@ -75,8 +82,9 @@ export default class MyPlugin extends Plugin {
 		const sendMailOption: Options = {
 			from: this.settings.from,
 			to,
+			cc,
 			bcc,
-			subject: `工作日报 - 罗广 - ${moment().format('YYYYMMDD')}`,
+			subject: this.settings.subjectFormat.replace('${YYYYMMDD}', moment().format('YYYYMMDD')),
 			text: workContent
 		};
 
@@ -98,10 +106,10 @@ export default class MyPlugin extends Plugin {
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+class SendEmailSettingTab extends PluginSettingTab {
+	plugin: SendEmailPlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: SendEmailPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -111,8 +119,11 @@ class SampleSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
+		containerEl.createEl('h1', { text: '邮箱设置' });
+
 		new Setting(containerEl)
-			.setName('Host: ')
+			.setName('Host')
+			.setDesc('设置邮箱发送服务器(stmp)')
 			.addText(text => text
 				.setPlaceholder('Enter your host')
 				.setValue(this.plugin.settings.host)
@@ -122,7 +133,8 @@ class SampleSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('Port: ')
+			.setName('Port')
+			.setDesc('设置邮箱发送服务器端口')
 			.addText(text => text
 				.setPlaceholder('Enter your port')
 				.setValue(this.plugin.settings.port.toString())
@@ -132,7 +144,20 @@ class SampleSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('Password: ')
+			.setName('SSL')
+			.setDesc('设置邮箱发送服务器是否使用SSL')
+			.addToggle(toggle => toggle
+				.setTooltip('是否使用SSL')
+				.setValue(this.plugin.settings.ssl)
+				.onChange(async (value) => {
+					this.plugin.settings.ssl = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName('Password')
+			.setDesc('设置邮箱一次性密码')
 			.addText(text => text
 				.setPlaceholder('Enter your password')
 				.setValue(this.plugin.settings.password)
@@ -141,8 +166,11 @@ class SampleSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
+		containerEl.createEl('h1', { text: '联系人' });
+
 		new Setting(containerEl)
-			.setName('From: ')
+			.setName('From')
+			.setDesc('设置发件人')
 			.addText(text => text
 				.setPlaceholder('Enter your from')
 				.setValue(this.plugin.settings.from)
@@ -152,7 +180,8 @@ class SampleSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('To: ')
+			.setName('To')
+			.setDesc('设置收件人，使用 \',\' 分割')
 			.addText(text => text
 				.setPlaceholder('Enter your to')
 				.setValue(this.plugin.settings.to)
@@ -162,12 +191,37 @@ class SampleSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('Bcc: ')
+			.setName('Cc')
+			.setDesc('设置抄送人，使用 \',\' 分割')
+			.addText(text => text
+				.setPlaceholder('Enter your cc')
+				.setValue(this.plugin.settings.cc)
+				.onChange(async (value) => {
+					this.plugin.settings.cc = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Bcc')
+			.setDesc('设置密送人，使用 \',\' 分割')
 			.addText(text => text
 				.setPlaceholder('Enter your bcc')
 				.setValue(this.plugin.settings.bcc)
 				.onChange(async (value) => {
 					this.plugin.settings.bcc = value;
+					await this.plugin.saveSettings();
+				}));
+
+		containerEl.createEl('h1', { text: '邮件主题设置' });
+
+		new Setting(containerEl)
+			.setName('Subject')
+			.setDesc('设置邮件主题')
+			.addText(text => text
+				.setPlaceholder('Enter your subject format')
+				.setValue(this.plugin.settings.subjectFormat)
+				.onChange(async (value) => {
+					this.plugin.settings.subjectFormat = value;
 					await this.plugin.saveSettings();
 				}));
 	}
