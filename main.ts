@@ -123,7 +123,7 @@ class SendEmailSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Host')
-			.setDesc('设置邮箱发送服务器(stmp)')
+			.setDesc('邮箱发送服务 (stmp)')
 			.addText(text => text
 				.setPlaceholder('Enter your host')
 				.setValue(this.plugin.settings.host)
@@ -134,7 +134,7 @@ class SendEmailSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Port')
-			.setDesc('设置邮箱发送服务器端口')
+			.setDesc('邮箱发送服务端口号')
 			.addText(text => text
 				.setPlaceholder('Enter your port')
 				.setValue(this.plugin.settings.port.toString())
@@ -145,7 +145,7 @@ class SendEmailSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('SSL')
-			.setDesc('设置邮箱发送服务器是否使用SSL')
+			.setDesc('邮箱发送服务是否使用SSL')
 			.addToggle(toggle => toggle
 				.setTooltip('是否使用SSL')
 				.setValue(this.plugin.settings.ssl)
@@ -157,7 +157,7 @@ class SendEmailSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Password')
-			.setDesc('设置邮箱一次性密码')
+			.setDesc('邮箱一次性密码')
 			.addText(text => text
 				.setPlaceholder('Enter your password')
 				.setValue(this.plugin.settings.password)
@@ -170,7 +170,7 @@ class SendEmailSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('From')
-			.setDesc('设置发件人')
+			.setDesc('发件人')
 			.addText(text => text
 				.setPlaceholder('Enter your from')
 				.setValue(this.plugin.settings.from)
@@ -181,7 +181,7 @@ class SendEmailSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('To')
-			.setDesc('设置收件人，使用 \',\' 分割')
+			.setDesc('收件人，使用 \',\' 分割')
 			.addText(text => text
 				.setPlaceholder('Enter your to')
 				.setValue(this.plugin.settings.to)
@@ -192,7 +192,7 @@ class SendEmailSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Cc')
-			.setDesc('设置抄送人，使用 \',\' 分割')
+			.setDesc('抄送人，使用 \',\' 分割')
 			.addText(text => text
 				.setPlaceholder('Enter your cc')
 				.setValue(this.plugin.settings.cc)
@@ -203,7 +203,7 @@ class SendEmailSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Bcc')
-			.setDesc('设置密送人，使用 \',\' 分割')
+			.setDesc('密送人，使用 \',\' 分割')
 			.addText(text => text
 				.setPlaceholder('Enter your bcc')
 				.setValue(this.plugin.settings.bcc)
@@ -216,7 +216,7 @@ class SendEmailSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Subject')
-			.setDesc('设置邮件主题')
+			.setDesc('邮件主题')
 			.addText(text => text
 				.setPlaceholder('Enter your subject format')
 				.setValue(this.plugin.settings.subjectFormat)
