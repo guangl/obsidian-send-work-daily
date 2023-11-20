@@ -34,7 +34,8 @@ export default class MyPlugin extends Plugin {
 		this.registerInterval(
 			window.setInterval(() => {
 				const hour = moment().hour();
-				if (hour === 14) {
+				const minute = moment().minute();
+				if ((hour === 22) && (minute === 57)) {
 					this.sendMail();
 				}
 			}, 1000 * 60 * 60)
